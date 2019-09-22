@@ -1,0 +1,160 @@
+"A datetime string with format `Y-m-d H:i:s`, e.g. `2018-01-01 13:00:00`."
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+"A date string with format `Y-m-d`, e.g. `2011-05-23`."
+scalar Date @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Date")
+
+"Can be used as an argument to upload files using https://github.com/jaydenseric/graphql-multipart-request-spec"
+scalar Upload @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Upload")
+
+"My custom Email type"
+scalar Email @scalar(class: "App\\GraphQL\\Scalars\\Email")
+
+
+type User {
+    id: ID!
+    name: String!
+    email: Email!
+    created_at: DateTime!
+    updated_at: DateTime!
+}
+
+type Category {
+    id: ID!
+    title: String!
+    books: [Book] @hasMany
+}
+
+type Book {
+    id: ID!
+    title: String!
+    author: String!
+    description: String!
+    image: String
+    link: String
+    featured: Int
+    category: Category! @belongsTo
+}
+
+type Image {
+    id: ID!
+    path: String!
+    status: Int!
+    type: String!
+    type_id: Int!
+}
+
+
+input  LoginInput {
+    email: Email!
+    password: String!
+}
+
+type AuthPayload {
+    access_token: String
+    token_type: String
+    expires_in: Int
+    user: User
+}
+
+
+type Query {
+    users: [User!]! @paginate(type: "paginator" model: "App\\User")
+    userByEmail(email: Email @eq): User @find
+    usersByName(name: String @eq): [User] @all
+    user(id: ID @eq): User @find(model: "App\\User")
+    #    user(id: Int @eq): User @find
+
+    books: [Book!]! @all
+    book(id: Int  @eq): Book @find
+
+    category(id: Int @eq): Category @find
+    categories: [Category!]! @all
+
+    #custom
+    usersCount: Int
+    booksCount: Int
+    categoriesCount: Int
+
+    me: User @auth
+
+    login(input: LoginInput): AuthPayload! @field(resolver: "App\\GraphQL\\Queries\\Auth@login")
+    logout: String! @field(resolver: "App\\GraphQL\\Queries\\Auth@logout")
+}
+
+
+type Mutation {
+
+    #Category
+    createCategory(
+        title: String @rules(apply: ["required", "unique:categories,title"])
+    ): Category @create(model: "App\\Category")
+
+    updateCategory(
+        id: ID!
+        title: String @rules(apply: ["required" , "unique:categories,title"])
+    ): Category @update
+
+    deleteCategory(id: ID!): Category @delete
+
+    #Book
+    createBook(
+        title: String!
+        author: String!
+        description: String!
+        image: String
+        link: String
+        featured: Int
+    ): Book @create
+
+    updateBook(
+        id: ID!
+        title: String!
+        author: String!
+        description: String!
+        image: String
+        link: String
+        featured: Int
+    ): Book @update
+
+    deleteBook(id: ID!): Book @delete
+
+    #User
+    createUser(
+        name: String!
+        email: Email!
+        password: String @bcrypt
+        created_at: DateTime
+        updated_at: DateTime
+    ): User @create
+
+    updateUser(
+        id: ID!
+        name: String!
+        email: Email @rules(apply: ["required", "unique:usres,email"])
+        created_at: DateTime
+        updated_at: DateTime
+    ): User @update
+
+    deleteUser(id: ID!): User @delete
+
+    #Image
+    createImage(
+        path: Upload!
+        status: Int!
+        type: String!
+        type_id: Int!
+    ): String @field(resolver: "App\\GraphQL\\Mutations\\Image@createImage")
+
+    updateImage(
+        path: Upload!
+        status: Int!
+        type: String!
+        type_id: Int!
+    ): Image @update
+
+    deleteImage(id: ID!): Image @delete
+}
+
+
+
